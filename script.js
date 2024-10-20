@@ -15,6 +15,7 @@ class Carousel {
         this.slides = this.options.slides || [];
         this.currentIndex = 0;
         this.autoplayInterval = null;
+        this.visibleSlides = Math.min(5, this.slides.length);
 
         this.init();
     }
@@ -50,15 +51,28 @@ class Carousel {
     updateSlides() {
         const slideElements = this.carousel.querySelectorAll('.slide');
         const dots = this.navigation.querySelectorAll('.nav-dot');
+        const halfVisible = Math.floor(this.visibleSlides / 2);
+
         slideElements.forEach((slide, index) => {
             slide.classList.remove('active', 'prev', 'next', 'prev-prev', 'next-next');
-            const offset = (index - this.currentIndex + this.slides.length) % this.slides.length;
-            if (offset === 0) slide.classList.add('active');
-            if (offset === 1) slide.classList.add('next');
-            if (offset === this.slides.length - 1) slide.classList.add('prev');
-            if (offset === 2) slide.classList.add('next-next');
-            if (offset === this.slides.length - 2) slide.classList.add('prev-prev');
+            
+            let offset = (index - this.currentIndex + this.slides.length) % this.slides.length;
+            if (offset > halfVisible) offset -= this.slides.length;
+            if (offset < -halfVisible) offset += this.slides.length;
+
+            if (offset === 0) {
+                slide.classList.add('active');
+            } else if (offset === -1 || (offset === halfVisible && this.visibleSlides % 2 === 0)) {
+                slide.classList.add('prev');
+            } else if (offset === 1 || (offset === -halfVisible && this.visibleSlides % 2 === 0)) {
+                slide.classList.add('next');
+            } else if (offset === -2 && this.visibleSlides > 3) {
+                slide.classList.add('prev-prev');
+            } else if (offset === 2 && this.visibleSlides > 3) {
+                slide.classList.add('next-next');
+            }
         });
+
         if (this.options.showDots) {
             dots.forEach((dot, index) => {
                 dot.classList.toggle('active', index === this.currentIndex);
@@ -119,12 +133,14 @@ const carouselContainer = document.querySelector('.carousel-container');
 const slides = [
     { image: 'https://images6.alphacoders.com/462/thumb-1920-462371.jpg', title: 'Web Development', description: 'Building the future of the web' },
     { image: 'https://source.unsplash.com/random/800x600?programming', title: 'Programming', description: 'Coding the world of tomorrow' },
-    // ... add all your slides here
+    { image: 'https://source.unsplash.com/random/800x600?coding', title: 'Coding', description: 'Turning ideas into reality' },
+    { image: 'https://images6.alphacoders.com/462/thumb-1920-462371.jpg', title: 'Web Development', description: 'Building the future of the web' },
+    
 ];
 
 const myCarousel = new Carousel(carouselContainer, { 
     slides: slides,
-    showDots: false  // Set this to false to hide dots by default
+    showDots: true
 });
 
 // You can toggle dots visibility after initialization
