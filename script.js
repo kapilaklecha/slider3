@@ -3,7 +3,13 @@ class Carousel {
         this.container = container;
         this.options = {
             autoplayInterval: 3000,
-            showDots: true,  // New option to control dot visibility
+            showDots: true,
+            infinite: true,
+            responsive: [
+                { breakpoint: 768, visibleSlides: 1 },
+                { breakpoint: 1024, visibleSlides: 3 },
+                { breakpoint: Infinity, visibleSlides: 5 }
+            ],
             ...options
         };
 
@@ -15,7 +21,7 @@ class Carousel {
         this.slides = this.options.slides || [];
         this.currentIndex = 0;
         this.autoplayInterval = null;
-        this.visibleSlides = Math.min(5, this.slides.length);
+        this.visibleSlides = this.getVisibleSlides();
 
         this.init();
     }
@@ -25,23 +31,32 @@ class Carousel {
         this.updateSlides();
         this.addEventListeners();
         this.startAutoplay();
-        this.updateDotsVisibility();  // Call this method to set initial visibility
+        this.updateDotsVisibility();
+        this.setupAccessibility();
+        this.setupResponsive();
+    }
+
+    getVisibleSlides() {
+        const windowWidth = window.innerWidth;
+        const responsive = this.options.responsive.find(r => windowWidth <= r.breakpoint);
+        return responsive ? responsive.visibleSlides : 5;
     }
 
     createSlides() {
         this.slides.forEach((slide, index) => {
             const slideElement = document.createElement('div');
             slideElement.classList.add('slide');
-            slideElement.innerHTML = `
-                <img src="${slide.image}" alt="${slide.title}">
-                <h2>${slide.title}</h2>
-                <p>${slide.description}</p>
-            `;
+            slideElement.innerHTML = this.options.slideTemplate ? 
+                this.options.slideTemplate(slide) :
+                `<img src="${slide.image}" alt="${slide.title}" loading="lazy">
+                 <h2>${slide.title}</h2>
+                 <p>${slide.description}</p>`;
             this.carousel.appendChild(slideElement);
 
             if (this.options.showDots) {
-                const dot = document.createElement('div');
+                const dot = document.createElement('button');
                 dot.classList.add('nav-dot');
+                dot.setAttribute('aria-label', `Go to slide ${index + 1}`);
                 dot.addEventListener('click', () => this.goToSlide(index));
                 this.navigation.appendChild(dot);
             }
@@ -78,6 +93,33 @@ class Carousel {
                 dot.classList.toggle('active', index === this.currentIndex);
             });
         }
+
+        this.updateAriaAttributes();
+    }
+
+    updateAriaAttributes() {
+        this.slides.forEach((_, index) => {
+            const slide = this.carousel.children[index];
+            slide.setAttribute('aria-hidden', index !== this.currentIndex);
+        });
+    }
+
+    setupAccessibility() {
+        this.container.setAttribute('role', 'region');
+        this.container.setAttribute('aria-roledescription', 'carousel');
+        this.carousel.setAttribute('aria-live', 'polite');
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') this.prevSlide();
+            if (e.key === 'ArrowRight') this.nextSlide();
+        });
+    }
+
+    setupResponsive() {
+        window.addEventListener('resize', () => {
+            this.visibleSlides = this.getVisibleSlides();
+            this.updateSlides();
+        });
     }
 
     goToSlide(index) {
@@ -110,6 +152,31 @@ class Carousel {
     addEventListeners() {
         this.prevButton.addEventListener('click', () => this.prevSlide());
         this.nextButton.addEventListener('click', () => this.nextSlide());
+        this.container.addEventListener('mouseenter', () => this.pauseAutoplay());
+        this.container.addEventListener('mouseleave', () => this.resumeAutoplay());
+        this.setupTouchEvents();
+    }
+
+    setupTouchEvents() {
+        let startX, moveX;
+        this.carousel.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].pageX;
+        });
+        this.carousel.addEventListener('touchmove', (e) => {
+            moveX = e.touches[0].pageX;
+        });
+        this.carousel.addEventListener('touchend', () => {
+            if (startX - moveX > 50) this.nextSlide();
+            if (moveX - startX > 50) this.prevSlide();
+        });
+    }
+
+    pauseAutoplay() {
+        clearInterval(this.autoplayInterval);
+    }
+
+    resumeAutoplay() {
+        this.startAutoplay();
     }
 
     // New method to update dots visibility
@@ -129,18 +196,30 @@ class Carousel {
 }
 
 // Usage
-const carouselContainer = document.querySelector('.carousel-container');
-const slides = [
-    { image: 'https://images6.alphacoders.com/462/thumb-1920-462371.jpg', title: 'Web Development', description: 'Building the future of the web' },
-    { image: 'https://source.unsplash.com/random/800x600?programming', title: 'Programming', description: 'Coding the world of tomorrow' },
-    { image: 'https://source.unsplash.com/random/800x600?coding', title: 'Coding', description: 'Turning ideas into reality' },
-    { image: 'https://images6.alphacoders.com/462/thumb-1920-462371.jpg', title: 'Web Development', description: 'Building the future of the web' },
+// const carouselContainer = document.querySelector('.carousel-container');
+// const slides = [
+//     { image: 'https://images6.alphacoders.com/462/thumb-1920-462371.jpg', title: 'Web Development', description: 'Building the future of the web' },
+//     { image: 'https://source.unsplash.com/random/800x600?programming', title: 'Programming', description: 'Coding the world of tomorrow' },
+//     { image: 'https://source.unsplash.com/random/800x600?coding', title: 'Coding', description: 'Turning ideas into reality' },
+//     { image: 'https://images6.alphacoders.com/462/thumb-1920-462371.jpg', title: 'Web Development', description: 'Building the future of the web' },
     
-];
+// ];
 
-const myCarousel = new Carousel(carouselContainer, { 
+const myCarousel = new Carousel(carouselContainer, {
     slides: slides,
-    showDots: true
+    infinite: true,
+    slideTemplate: (slide) => `<div class="custom-slide">
+        <img src="${slide.image}" alt="${slide.title}" loading="lazy">
+        <div class="slide-content">
+            <h2>${slide.title}</h2>
+            <p>${slide.description}</p>
+        </div>
+    </div>`,
+    responsive: [
+        { breakpoint: 600, visibleSlides: 1 },
+        { breakpoint: 1000, visibleSlides: 3 },
+        { breakpoint: Infinity, visibleSlides: 5 }
+    ]
 });
 
 // You can toggle dots visibility after initialization
