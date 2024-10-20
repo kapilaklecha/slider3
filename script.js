@@ -3,6 +3,7 @@ class Carousel {
         this.container = container;
         this.options = {
             autoplayInterval: 3000,
+            showDots: true,  // New option to control dot visibility
             ...options
         };
 
@@ -23,6 +24,7 @@ class Carousel {
         this.updateSlides();
         this.addEventListeners();
         this.startAutoplay();
+        this.updateDotsVisibility();  // Call this method to set initial visibility
     }
 
     createSlides() {
@@ -36,10 +38,12 @@ class Carousel {
             `;
             this.carousel.appendChild(slideElement);
 
-            const dot = document.createElement('div');
-            dot.classList.add('nav-dot');
-            dot.addEventListener('click', () => this.goToSlide(index));
-            this.navigation.appendChild(dot);
+            if (this.options.showDots) {
+                const dot = document.createElement('div');
+                dot.classList.add('nav-dot');
+                dot.addEventListener('click', () => this.goToSlide(index));
+                this.navigation.appendChild(dot);
+            }
         });
     }
 
@@ -55,9 +59,11 @@ class Carousel {
             if (offset === 2) slide.classList.add('next-next');
             if (offset === this.slides.length - 2) slide.classList.add('prev-prev');
         });
-        dots.forEach((dot, index) => {
-            dot.classList.toggle('active', index === this.currentIndex);
-        });
+        if (this.options.showDots) {
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === this.currentIndex);
+            });
+        }
     }
 
     goToSlide(index) {
@@ -91,6 +97,21 @@ class Carousel {
         this.prevButton.addEventListener('click', () => this.prevSlide());
         this.nextButton.addEventListener('click', () => this.nextSlide());
     }
+
+    // New method to update dots visibility
+    updateDotsVisibility() {
+        if (this.options.showDots) {
+            this.navigation.style.display = 'flex';
+        } else {
+            this.navigation.style.display = 'none';
+        }
+    }
+
+    // New method to toggle dots visibility
+    toggleDots(show) {
+        this.options.showDots = show;
+        this.updateDotsVisibility();
+    }
 }
 
 // Usage
@@ -101,4 +122,11 @@ const slides = [
     // ... add all your slides here
 ];
 
-const myCarousel = new Carousel(carouselContainer, { slides: slides });
+const myCarousel = new Carousel(carouselContainer, { 
+    slides: slides,
+    showDots: false  // Set this to false to hide dots by default
+});
+
+// You can toggle dots visibility after initialization
+// myCarousel.toggleDots(false);  // To hide dots
+// myCarousel.toggleDots(true);   // To show dots
